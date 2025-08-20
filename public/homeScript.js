@@ -17,17 +17,14 @@ document.getElementById("createBtn").onclick = () => {
     socket.emit("createGame", ({ roomCode }) => {
       console.log("Created room:", roomCode);
       alert(`Share this code with your friends: ${roomCode}`);
+      window.location.href = 'game.html?roomCode=' + roomCode;
     });
 };
 
 document.getElementById("joinBtn").onclick = () => {
-    const code = prompt("Enter room code:");
-    socket.emit("joinGame", code, (res) => {
-      if (res.ok) {
-        console.log("Joined room:", res.roomCode);
-      } else {
-        alert(res.error);
-      }
-    });
-  };
+  const code = prompt("Enter room code:")?.trim();
+  if (!code) return;
+  window.location.href = 'game.html?roomCode=' + encodeURIComponent(code);
+};
+
   

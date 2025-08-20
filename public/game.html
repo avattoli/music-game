@@ -7,7 +7,12 @@
 </head>
 <body>
   <button id="startBtn">Start Game</button>
-
+  <ul id="users">
+    <li></li>
+    <li></li>
+    <li></li>
+    <li></li>
+  </ul>
   <div id="gameArea" style="display:none;">
     <h1>Welcome to the Music Game</h1>
     <div id="countdown">20</div>
@@ -17,8 +22,11 @@
     <button id="mute">Mute</button>
     <div id="points">0</div>
 
+
     <button id="next" style="display:none;">Next Song</button>
   </div>
+  <script src="/socket.io/socket.io.js"></script>
   <script src="gameScript.js"></script>
 </body>
 </html>
+

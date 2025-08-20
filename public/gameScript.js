@@ -6,18 +6,39 @@ document.addEventListener('DOMContentLoaded', () => {
     const startBtn = document.getElementById("startBtn");
     const nextBtn = document.getElementById("next");
     const gameArea = document.getElementById('gameArea');
-    
+    const users = document.getElementById('users');
     let timeLeft;
     let interval;
     let trackIndex;
     let currentSong = null;
-    
     const tracks = [
-        {src: "songs/flashing lights-kanye west Explicit version.mp3", name: "flashing lights"},
-        {src: "songs/kanye-west-heartless-128-ytshorts.savetube.me.mp3", name: "heartless"},
-        {src: "songs/kanye-west-runaway-video-version-ft-pusha-t-128-ytshorts.savetube.me.mp3", name: "runaway"}
+        {src: "../songs/flashing lights-kanye west Explicit version.mp3", name: "flashing lights"},
+        {src: "../songs/kanye-west-heartless-128-ytshorts.savetube.me.mp3", name: "heartless"},
+        {src: "../songs/kanye-west-runaway-video-version-ft-pusha-t-128-ytshorts.savetube.me.mp3", name: "runaway"}
     ];
 
+    const socket = io();
+    const usersUl = document.getElementById('users');
+    const code = new URLSearchParams(location.search).get('roomCode');
+    if (!code) { alert('Missing room code'); location.href = '/'; return; }
+  
+    const name = prompt('Your name (optional):') || '';
+  
+    socket.emit('joinGame', { code, name }, (res) => {
+      if (!res.ok) { alert(res.error); location.href = '/'; return; }
+      // res.me = { id, name } if you need it
+    });
+  
+    socket.on('roster', (roster) => {
+      // roster is [{id,name}, ...] for this room
+      usersUl.innerHTML = '';
+      for (const u of roster) {
+        const li = document.createElement('li');
+        li.textContent = u.name; // or `${u.name} (${u.id.slice(0,4)})`
+        usersUl.appendChild(li);
+      }
+    });
+  
     // Stop any currently playing song and clean up
     function stopCurrentSong() {
         if (currentSong) {
