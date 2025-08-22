@@ -22,7 +22,7 @@ function ensureRoom(code) {
 function broadcastRoster(io, code) {
   const room = rooms[code];
   if (!room) return;
-  const roster = Array.from(room.users.values()); // [{id,name}, ...]
+  const roster = Array.from(room.users.values()); // [{id,name,points}, ...]
   io.to(code).emit('roster', roster);
 }
 
@@ -62,9 +62,18 @@ io.on('connection', (socket) => {
       const room = ensureRoom(code);
       // store minimal identity; you can add avatar, score, etc.
       const display = name?.trim() || `Player-${socket.id.slice(0,4)}`;
-      room.users.set(socket.id, { id: socket.id, name: display });
-  
-      ack?.({ ok: true, roomCode: code, me: { id: socket.id, name: display } });
+      room.users.set(socket.id, { id: socket.id, name: display, points: 0 });
+
+      ack?.({ ok: true, roomCode: code, me: { id: socket.id, name: display, points: 0 } });
+      broadcastRoster(io, code);
+    });
+
+    socket.on('addPoints', ({ code, points }) => {
+      const room = rooms[code];
+      if (!room) return;
+      const u = room.users.get(socket.id);
+      if (!u) return;
+      u.points = (u.points || 0) + (points || 0);
       broadcastRoster(io, code);
     });
 
