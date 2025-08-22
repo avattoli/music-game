@@ -7,6 +7,15 @@ const server = http.createServer(app);
 
 const PORT = process.env.PORT || 3000;
 
+const TRACKS = [
+  { src: "/songs/flashing lights-kanye west Explicit version.mp3", name: "flashing lights" },
+  { src: "/songs/kanye-west-heartless-128-ytshorts.savetube.me.mp3", name: "heartless" },
+  { src: "/songs/kanye-west-runaway-video-version-ft-pusha-t-128-ytshorts.savetube.me.mp3", name: "runaway" }
+];
+
+const ROUND_DURATION_MS = 20000;
+const TOTAL_ROUNDS = 5;
+
 server.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
@@ -16,9 +25,9 @@ app.use('/songs', express.static('songs'));
 
 const io = new Server(server);
 
-const rooms = Object.create(null); 
+const rooms = Object.create(null);
 function ensureRoom(code) {
-  if (!rooms[code]) rooms[code] = { users: new Map() };
+  if (!rooms[code]) rooms[code] = { users: new Map(), round: null, roundCount: 0, roundTimer: null };
   return rooms[code];
 }
 function broadcastRoster(io, code) {
@@ -26,6 +35,26 @@ function broadcastRoster(io, code) {
   if (!room) return;
   const roster = Array.from(room.users.values()); // [{id,name,points}, ...]
   io.to(code).emit('roster', roster);
+}
+
+function endRound(code) {
+  const room = rooms[code];
+  if (!room || !room.round) return;
+
+  clearTimeout(room.roundTimer);
+  room.roundTimer = null;
+
+  const trackName = room.round.track.name;
+  const scoreboard = Array.from(room.users.values()).sort((a, b) => b.points - a.points);
+
+  io.to(code).emit('roundEnd', { trackName, scoreboard });
+  broadcastRoster(io, code);
+
+  room.round = null;
+
+  if (room.roundCount >= TOTAL_ROUNDS) {
+    io.to(code).emit('gameEnd', scoreboard);
+  }
 }
 
 io.on('connection', (socket) => {
@@ -68,6 +97,37 @@ io.on('connection', (socket) => {
 
       ack?.({ ok: true, roomCode: code, me: { id: socket.id, name: display, points: 0 } });
       broadcastRoster(io, code);
+    });
+
+    socket.on('startRound', (code) => {
+      const room = rooms[code];
+      if (!room) return;
+      const track = TRACKS[Math.floor(Math.random() * TRACKS.length)];
+      room.round = { track, guesses: [] };
+      room.roundCount = (room.roundCount || 0) + 1;
+      if (room.roundTimer) clearTimeout(room.roundTimer);
+      room.roundTimer = setTimeout(() => endRound(code), ROUND_DURATION_MS);
+      io.to(code).emit('roundStart', { track: { src: track.src } });
+    });
+
+    socket.on('guess', ({ code, guess }) => {
+      const room = rooms[code];
+      if (!room?.round) return;
+      const normalized = guess?.trim().toLowerCase();
+      if (normalized !== room.round.track.name.toLowerCase()) return;
+      if (room.round.guesses.find(g => g.id === socket.id)) return;
+      const entry = { id: socket.id, timestamp: Date.now() };
+      room.round.guesses.push(entry);
+      const pointsTable = [1000, 700, 400, 200];
+      const idx = room.round.guesses.length - 1;
+      const pointsAwarded = pointsTable[idx] || 0;
+      const user = room.users.get(socket.id);
+      if (user) user.points = (user.points || 0) + pointsAwarded;
+      io.to(code).emit('correctGuess', { playerId: socket.id, pointsAwarded });
+      broadcastRoster(io, code);
+      if (room.round.guesses.length >= room.users.size) {
+        endRound(code);
+      }
     });
 
     socket.on('addPoints', ({ code, points }) => {
