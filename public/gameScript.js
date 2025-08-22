@@ -7,6 +7,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const startBtn = document.getElementById('startBtn');
   const nextBtn = document.getElementById('next');
   const gameArea = document.getElementById('gameArea');
+  const roundInfo = document.getElementById('roundInfo');
+  const gameOverModal = document.getElementById('gameOverModal');
+  const winnerMessage = document.getElementById('winnerMessage');
+  const playAgain = document.getElementById('playAgain');
   const usersUl = document.getElementById('users');
 
   const socket = io();
@@ -28,9 +32,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   socket.on('roster', (roster) => {
     usersUl.innerHTML = '';
-    const sorted = [...roster].sort((a, b) => b.points - a.points);
-    for (const u of sorted) {
+    for (const u of roster) {
       const li = document.createElement('li');
+      li.dataset.id = u.id;
       li.innerHTML = `<span>${u.name}</span><span>${u.points}</span>`;
       usersUl.appendChild(li);
     }
@@ -75,12 +79,13 @@ document.addEventListener('DOMContentLoaded', () => {
     userInput.value = '';
   });
 
-  socket.on('roundStart', ({ track }) => {
+  socket.on('roundStart', ({ track, round, totalRounds, duration }) => {
     stopCurrentSong();
     userInput.disabled = false;
     mute.style.display = 'block';
-    countdown.textContent = 20;
-    timeLeft = 20;
+    roundInfo.textContent = `Round ${round}/${totalRounds}`;
+    timeLeft = Math.floor(duration / 1000);
+    countdown.textContent = timeLeft;
     if (interval) clearInterval(interval);
     interval = setInterval(() => {
       timeLeft--;
@@ -94,6 +99,11 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   socket.on('correctGuess', ({ playerId, pointsAwarded }) => {
+    const li = usersUl.querySelector(`li[data-id="${playerId}"]`);
+    if (li) {
+      li.classList.add('flash');
+      setTimeout(() => li.classList.remove('flash'), 1000);
+    }
     if (playerId === myId) {
       countdown.textContent = `Correct! +${pointsAwarded}`;
       userInput.disabled = true;
@@ -103,13 +113,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  socket.on('roundEnd', ({ trackName }) => {
+  socket.on('roundEnd', ({ trackName, scoreboard }) => {
     stopCurrentSong();
     if (interval) clearInterval(interval);
     countdown.textContent = `Answer: ${trackName}`;
     userInput.disabled = true;
     nextBtn.style.display = 'block';
     mute.style.display = 'none';
+    if (scoreboard) {
+      usersUl.innerHTML = '';
+      scoreboard.forEach((u) => {
+        const li = document.createElement('li');
+        li.dataset.id = u.id;
+        li.innerHTML = `<span>${u.name}</span><span>${u.points}</span>`;
+        usersUl.appendChild(li);
+      });
+    }
   });
 
   socket.on('gameEnd', (scoreboard) => {
@@ -120,12 +139,21 @@ document.addEventListener('DOMContentLoaded', () => {
     nextBtn.style.display = 'none';
     mute.style.display = 'none';
     usersUl.innerHTML = '';
-    const sorted = [...scoreboard].sort((a, b) => b.points - a.points);
-    sorted.forEach((u, idx) => {
+    scoreboard.forEach((u, idx) => {
       const li = document.createElement('li');
+      li.dataset.id = u.id;
       li.innerHTML = `<span>${u.name}</span><span>${u.points}</span>`;
-      if (idx === 0) li.style.fontWeight = 'bold';
+      if (idx === 0) li.classList.add('winner');
       usersUl.appendChild(li);
     });
+    const winner = scoreboard[0];
+    if (winner) {
+      winnerMessage.textContent = `${winner.name} wins with ${winner.points} points!`;
+      gameOverModal.classList.remove('hidden');
+    }
+  });
+
+  playAgain.addEventListener('click', () => {
+    location.href = '/';
   });
 });

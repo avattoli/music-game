@@ -8,20 +8,27 @@
 <body>
   <button id="startBtn">Start Game</button>
   <div id="gameArea" style="display:none;">
-    <h1>Welcome to the Music Game</h1>
+    <div id="playArea">
+      <h1>Welcome to the Music Game</h1>
+      <div id="roundInfo"></div>
+      <div id="countdown">20</div>
+      <form id="formInput">
+        <input type="text" id="userInput" placeholder="Enter your guess">
+      </form>
+      <button id="mute">Mute</button>
+      <div id="points">0</div>
+      <button id="next" style="display:none;">Next Song</button>
+    </div>
     <div id="leaderboard">
       <h2>Leaderboard</h2>
       <ul id="users"></ul>
     </div>
-    <div id="countdown">20</div>
-    <form id="formInput">
-      <input type="text" id="userInput" placeholder="Enter your guess">
-    </form>
-    <button id="mute">Mute</button>
-    <div id="points">0</div>
-
-
-    <button id="next" style="display:none;">Next Song</button>
+  </div>
+  <div id="gameOverModal" class="hidden">
+    <div class="modal-content">
+      <h2 id="winnerMessage"></h2>
+      <button id="playAgain">Play Again</button>
+    </div>
   </div>
   <script src="/socket.io/socket.io.js"></script>
   <script src="gameScript.js"></script>

@@ -33,7 +33,7 @@ function ensureRoom(code) {
 function broadcastRoster(io, code) {
   const room = rooms[code];
   if (!room) return;
-  const roster = Array.from(room.users.values()); // [{id,name,points}, ...]
+  const roster = Array.from(room.users.values()).sort((a, b) => b.points - a.points);
   io.to(code).emit('roster', roster);
 }
 
@@ -107,7 +107,12 @@ io.on('connection', (socket) => {
       room.roundCount = (room.roundCount || 0) + 1;
       if (room.roundTimer) clearTimeout(room.roundTimer);
       room.roundTimer = setTimeout(() => endRound(code), ROUND_DURATION_MS);
-      io.to(code).emit('roundStart', { track: { src: track.src } });
+      io.to(code).emit('roundStart', {
+        track: { src: track.src },
+        round: room.roundCount,
+        totalRounds: TOTAL_ROUNDS,
+        duration: ROUND_DURATION_MS,
+      });
     });
 
     socket.on('guess', ({ code, guess }) => {
