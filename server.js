@@ -27,7 +27,13 @@ const io = new Server(server);
 
 const rooms = Object.create(null);
 function ensureRoom(code) {
-  if (!rooms[code]) rooms[code] = { users: new Map(), round: null, roundCount: 0, roundTimer: null };
+  if (!rooms[code]) rooms[code] = {
+    users: new Map(),
+    round: null,
+    roundCount: 0,
+    roundTimer: null,
+    creatorId: null,
+  };
   return rooms[code];
 }
 function broadcastRoster(io, code) {
@@ -88,20 +94,27 @@ io.on('connection', (socket) => {
       if (!code) return ack?.({ ok: false, error: 'Missing code' });
       const roomSize = io.sockets.adapter.rooms.get(code)?.size || 0;
       if (roomSize >= 4) return ack?.({ ok: false, error: 'Room is full' });
-  
+
       socket.join(code);
       const room = ensureRoom(code);
+      if (!room.creatorId) room.creatorId = socket.id;
       // store minimal identity; you can add avatar, score, etc.
       const display = name?.trim() || `Player-${socket.id.slice(0,4)}`;
       room.users.set(socket.id, { id: socket.id, name: display, points: 0 });
 
-      ack?.({ ok: true, roomCode: code, me: { id: socket.id, name: display, points: 0 } });
+      ack?.({
+        ok: true,
+        roomCode: code,
+        me: { id: socket.id, name: display, points: 0 },
+        isCreator: socket.id === room.creatorId,
+      });
       broadcastRoster(io, code);
     });
 
     socket.on('startRound', (code) => {
       const room = rooms[code];
       if (!room) return;
+      if (socket.id !== room.creatorId) return;
       const track = TRACKS[Math.floor(Math.random() * TRACKS.length)];
       room.round = { track, guesses: [] };
       room.roundCount = (room.roundCount || 0) + 1;

@@ -23,11 +23,14 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentSong = null;
   let interval = null;
   let timeLeft = 0;
+  let isCreator = false;
 
   socket.emit('joinGame', { code, name }, (res) => {
     if (!res.ok) { alert(res.error); location.href = '/'; return; }
     myId = res.me.id;
     points.textContent = res.me.points;
+    isCreator = !!res.isCreator;
+    if (!isCreator) startBtn.style.display = 'none';
   });
 
   socket.on('roster', (roster) => {
@@ -51,6 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   startBtn.addEventListener('click', () => {
+    if (!isCreator) return;
     startBtn.style.display = 'none';
     gameArea.style.display = 'flex';
     socket.emit('startRound', code);
@@ -58,7 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   nextBtn.addEventListener('click', () => {
     nextBtn.style.display = 'none';
-    socket.emit('startRound', code);
+    if (isCreator) socket.emit('startRound', code);
   });
 
   mute.addEventListener('click', () => {
@@ -81,6 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   socket.on('roundStart', ({ track, round, totalRounds, duration }) => {
     stopCurrentSong();
+    gameArea.style.display = 'flex';
     userInput.disabled = false;
     mute.style.display = 'block';
     roundInfo.textContent = `Round ${round}/${totalRounds}`;
@@ -118,7 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (interval) clearInterval(interval);
     countdown.textContent = `Answer: ${trackName}`;
     userInput.disabled = true;
-    nextBtn.style.display = 'block';
+    nextBtn.style.display = isCreator ? 'block' : 'none';
     mute.style.display = 'none';
     if (scoreboard) {
       usersUl.innerHTML = '';
