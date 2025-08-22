@@ -11,7 +11,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const gameOverModal = document.getElementById('gameOverModal');
   const winnerMessage = document.getElementById('winnerMessage');
   const playAgain = document.getElementById('playAgain');
-  const usersUl = document.getElementById('users');
+  const leaderboard = document.getElementById('leaderboard');
+  const usersUl = leaderboard.querySelector('#users');
 
   const socket = io();
 
