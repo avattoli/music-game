@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const startBtn = document.getElementById("startBtn");
     const nextBtn = document.getElementById("next");
     const gameArea = document.getElementById('gameArea');
-    const users = document.getElementById('users');
+    let myId = null;
     let timeLeft;
     let interval;
     let trackIndex;
@@ -26,17 +26,21 @@ document.addEventListener('DOMContentLoaded', () => {
   
     socket.emit('joinGame', { code, name }, (res) => {
       if (!res.ok) { alert(res.error); location.href = '/'; return; }
-      // res.me = { id, name } if you need it
+      myId = res.me.id;
+      points.textContent = res.me.points;
     });
   
     socket.on('roster', (roster) => {
-      // roster is [{id,name}, ...] for this room
+      // roster is [{id,name,points}, ...] for this room
       usersUl.innerHTML = '';
-      for (const u of roster) {
+      const sorted = [...roster].sort((a,b) => b.points - a.points);
+      for (const u of sorted) {
         const li = document.createElement('li');
-        li.textContent = u.name; // or `${u.name} (${u.id.slice(0,4)})`
+        li.innerHTML = `<span>${u.name}</span><span>${u.points}</span>`;
         usersUl.appendChild(li);
       }
+      const me = roster.find(u => u.id === myId);
+      if (me) points.textContent = me.points;
     });
   
     // Stop any currently playing song and clean up
@@ -50,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     startBtn.addEventListener('click', () => {
         startBtn.style.display = "none";
-        gameArea.style.display = "block";
+        gameArea.style.display = "flex";
         startGame();
     });
 
@@ -127,9 +131,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const timeTaken = 20 - timeLeft;
             const pointsToAdd = getScore(timeTaken);
             const totalPoints = parseInt(points.textContent) + pointsToAdd;
-            
+
             countdown.textContent = `Correct! +${pointsToAdd} points!`;
             points.textContent = totalPoints;
+            socket.emit('addPoints', { code, points: pointsToAdd });
             nextBtn.style.display = "block";
             mute.style.display = "none";
         }
